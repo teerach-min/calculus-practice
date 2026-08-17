@@ -1,0 +1,13 @@
+node_modules/
+.next/
+out/
+build/
+.DS_Store
+*.pem
+npm-debug.log*
+.env*.local
+next-env.d.ts
+tsconfig.tsbuildinfo
+.tmp-test.mjs
+shot-*.png
+_to_delete/
