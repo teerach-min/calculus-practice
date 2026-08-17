@@ -1,0 +1,60 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# ปล่อยให้ deploy ที่ค้างอยู่ทำจนจบ แต่ไม่ต้องต่อคิวรอบเก่าซ้ำ ๆ
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: เปิดใช้ GitHub Pages (ครั้งแรกจะสร้างให้เอง)
+        uses: actions/configure-pages@v5
+        with:
+          enablement: true
+
+      - run: npm ci
+
+      # ค่า NEXT_PUBLIC_* ถูกฝังลงไฟล์ static ตอน build จึงใช้ vars ไม่ใช่ secrets
+      # ตั้งได้ที่ Settings → Secrets and variables → Actions → Variables
+      # ถ้ายังไม่ตั้ง GOOGLE_CLIENT_ID เว็บจะขึ้นเป็นโหมดทดลอง (ข้ามล็อกอิน)
+      - run: npm run build
+        env:
+          NEXT_PUBLIC_GOOGLE_CLIENT_ID: ${{ vars.GOOGLE_CLIENT_ID }}
+          NEXT_PUBLIC_SHEET_ENDPOINT: ${{ vars.SHEET_ENDPOINT }}
+          NEXT_PUBLIC_BASE_PATH: ${{ vars.BASE_PATH || '/calculus-practice-web' }}
+
+      # กัน Jekyll มองข้ามโฟลเดอร์ _next/
+      - run: touch out/.nojekyll
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: out
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
