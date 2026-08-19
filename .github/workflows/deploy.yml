@@ -33,14 +33,41 @@ jobs:
 
       - run: npm ci
 
+      # ตรวจก่อน deploy — เร็ว ไม่ต้องใช้เบราว์เซอร์
+      # ถ้าเฉลยกับเครื่องตรวจคำตอบไม่ตรงกัน จะหยุดตรงนี้ ไม่ปล่อยขึ้นเว็บ
+      - run: npm run typecheck
+      - run: npm run test:answers
+
+      # base path ต้องตรงกับชื่อ repo ไม่งั้นไฟล์ _next/ จะ 404 ทั้งเว็บ
+      #   repo ชื่อ calculus-practice      -> /calculus-practice
+      #   repo ชื่อ <user>.github.io       -> "" (อยู่ที่ราก ไม่ต้องมี base path)
+      # ตั้ง Variables ชื่อ BASE_PATH ทับได้ ถ้าอยากกำหนดเอง (ใส่ "/" = ราก)
+      - name: หา base path จากชื่อ repo
+        id: base
+        env:
+          BASE_PATH_VAR: ${{ vars.BASE_PATH }}
+          REPO_NAME: ${{ github.event.repository.name }}
+        shell: bash
+        run: |
+          if [ -n "$BASE_PATH_VAR" ]; then
+            path="$BASE_PATH_VAR"
+            if [ "$path" = "/" ]; then path=""; fi
+          elif [[ "$REPO_NAME" == *.github.io ]]; then
+            path=""
+          else
+            path="/$REPO_NAME"
+          fi
+          echo "path=$path" >> "$GITHUB_OUTPUT"
+          echo "base path = '${path:-(ราก)}'"
+
       # ค่า NEXT_PUBLIC_* ถูกฝังลงไฟล์ static ตอน build จึงใช้ vars ไม่ใช่ secrets
-      # ตั้งได้ที่ Settings → Secrets and variables → Actions → Variables
+      # ตั้งได้ที่ Settings -> Secrets and variables -> Actions -> Variables
       # ถ้ายังไม่ตั้ง GOOGLE_CLIENT_ID เว็บจะขึ้นเป็นโหมดทดลอง (ข้ามล็อกอิน)
       - run: npm run build
         env:
           NEXT_PUBLIC_GOOGLE_CLIENT_ID: ${{ vars.GOOGLE_CLIENT_ID }}
           NEXT_PUBLIC_SHEET_ENDPOINT: ${{ vars.SHEET_ENDPOINT }}
-          NEXT_PUBLIC_BASE_PATH: ${{ vars.BASE_PATH || '/calculus-practice-web' }}
+          NEXT_PUBLIC_BASE_PATH: ${{ steps.base.outputs.path }}
 
       # กัน Jekyll มองข้ามโฟลเดอร์ _next/
       - run: touch out/.nojekyll

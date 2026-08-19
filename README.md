@@ -7,7 +7,7 @@
 เข้าสู่ระบบด้วยบัญชี Google ก่อนเล่น บันทึกผู้ใช้ลง Google Sheet
 และเก็บคะแนนไว้ใน localStorage — **ไม่มีหลังบ้าน** เป็นไฟล์ static ล้วน
 
-**เว็บจริง:** https://teerach-min.github.io/calculus-practice-web/
+**เว็บจริง:** https://teerach-min.github.io/calculus-practice/
 (deploy อัตโนมัติทุกครั้งที่ push เข้า `main` ด้วย
 [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml))
 

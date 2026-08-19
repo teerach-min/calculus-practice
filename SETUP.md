@@ -114,73 +114,70 @@ npm run dev
 ## Deploy ขึ้น GitHub Pages
 
 โปรเจกต์ตั้ง `output: 'export'` ไว้แล้ว `npm run build` จะได้โฟลเดอร์ `out/`
-เป็นไฟล์ static ล้วน
+เป็นไฟล์ static ล้วน และมี workflow `.github/workflows/deploy.yml` ที่ build
+แล้วส่งขึ้น Pages ให้อัตโนมัติทุกครั้งที่ push เข้า `main`
 
-### กรณีที่ 1 — user site (`teerach-min.github.io`)
+### สิ่งที่ต้องตั้งบน GitHub (ทำครั้งเดียว)
 
-ถ้าเว็บอยู่ที่ root ของโดเมน ไม่ต้องตั้ง base path
+1. **Settings -> Pages -> Build and deployment -> Source** เลือก **GitHub Actions**
+   (ไม่ใช่ "Deploy from a branch")
+2. **Settings -> Secrets and variables -> Actions -> Variables** กด *New repository variable*
+
+   | ชื่อ | ค่า | จำเป็นไหม |
+   |------|-----|-----------|
+   | `GOOGLE_CLIENT_ID` | `...apps.googleusercontent.com` | ถ้าไม่ตั้ง เว็บจะขึ้นโหมดทดลอง (ข้ามล็อกอิน) |
+   | `SHEET_ENDPOINT` | `https://script.google.com/macros/s/.../exec` | ถ้าไม่ตั้ง จะไม่บันทึกลงชีต |
+   | `BASE_PATH` | เช่น `/calculus-practice` | **ไม่ต้องตั้ง** — workflow อ่านจากชื่อ repo ให้เอง |
+
+   > ใช้ **Variables** ไม่ใช่ **Secrets** เพราะค่า `NEXT_PUBLIC_*` ถูกฝังลงไฟล์
+   > JavaScript ตอน build อยู่แล้ว ใครก็เปิดดูได้ ไม่ใช่ความลับ
+   > (ดูหัวข้อความปลอดภัยด้านล่าง)
+
+3. **Google Cloud Console -> Credentials -> OAuth client -> Authorized JavaScript origins**
+   เพิ่ม `https://<user>.github.io`
+
+   ใส่แค่ scheme + host **ห้ามมี path ต่อท้าย** — ถึงเว็บจะอยู่ที่
+   `https://<user>.github.io/calculus-practice/` ก็ใส่แค่ `https://<user>.github.io`
+
+### base path ตั้งให้อัตโนมัติแล้ว
+
+จุดที่พังบ่อยที่สุดของ Next.js บน GitHub Pages คือ base path ไม่ตรงกับชื่อ repo
+ทำให้ไฟล์ใน `_next/` โหลดไม่ขึ้น เว็บออกมาเป็นหน้าขาว workflow จึงคำนวณให้เอง
+
+| repo | URL ที่ได้ | base path |
+|------|-----------|-----------|
+| `calculus-practice` | `https://<user>.github.io/calculus-practice/` | `/calculus-practice` |
+| `calculus-practice-web` | `https://<user>.github.io/calculus-practice-web/` | `/calculus-practice-web` |
+| `<user>.github.io` | `https://<user>.github.io/` | ว่าง (อยู่ที่ราก) |
+
+ย้าย repo หรือเปลี่ยนชื่อ ก็ไม่ต้องแก้อะไร ถ้าอยากกำหนดเองให้ตั้ง variable
+`BASE_PATH` (ใส่ `/` ถ้าต้องการให้อยู่ที่ราก)
+
+### ขั้นตอน deploy
 
 ```bash
-npm run build          # ได้ out/
+git add -A
+git commit -m "deploy"
+git push origin main
 ```
 
-เอาไฟล์ใน `out/` ไปวางใน repo `teerach-min.github.io`
+แล้วไปดูที่แท็บ **Actions** ของ repo — job `build` จะ typecheck, รันเทสต์เฉลย 720 โจทย์,
+build แล้ว job `deploy` จะปล่อยขึ้น Pages ใช้เวลาราว 2 นาที
+URL จริงจะโชว์อยู่ในผลลัพธ์ของ job `deploy`
 
-### กรณีที่ 2 — project site (`teerach-min.github.io/calculus-practice`)
+ถ้าเทสต์ไม่ผ่าน workflow จะหยุดก่อน ไม่ปล่อยของเสียขึ้นเว็บ
 
-ต้องบอก Next.js ว่าเว็บอยู่ใต้โฟลเดอร์ย่อย
+### build เองในเครื่อง (ถ้าอยากลองก่อน push)
 
 ```bash
 NEXT_PUBLIC_BASE_PATH=/calculus-practice npm run build
-```
-
-แล้วเอา `out/` ไปวางที่ branch `gh-pages` ของ repo นั้น
-อย่าลืมสร้างไฟล์ว่างชื่อ `.nojekyll` ไว้ใน `out/` ด้วย ไม่งั้น GitHub Pages
-จะมองข้ามโฟลเดอร์ `_next/`
-
-```bash
 touch out/.nojekyll
+
+# ต้องเสิร์ฟใต้โฟลเดอร์ชื่อเดียวกับ base path ถึงจะเหมือนของจริง
+mkdir -p /tmp/pages && cp -r out /tmp/pages/calculus-practice
+cd /tmp/pages && python3 -m http.server 3200
+# เปิด http://localhost:3200/calculus-practice/
 ```
-
-### ตัวอย่าง GitHub Actions
-
-```yaml
-name: Deploy
-on:
-  push: { branches: [main] }
-permissions:
-  contents: read
-  pages: write
-  id-token: write
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with: { node-version: 20, cache: npm }
-      - run: npm ci
-      - run: npm run build
-        env:
-          NEXT_PUBLIC_GOOGLE_CLIENT_ID: ${{ vars.GOOGLE_CLIENT_ID }}
-          NEXT_PUBLIC_SHEET_ENDPOINT: ${{ vars.SHEET_ENDPOINT }}
-          NEXT_PUBLIC_BASE_PATH: ${{ vars.BASE_PATH }}
-      - run: touch out/.nojekyll
-      - uses: actions/upload-pages-artifact@v3
-        with: { path: out }
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    environment: github-pages
-    steps:
-      - uses: actions/deploy-pages@v4
-```
-
-ตั้งค่า `GOOGLE_CLIENT_ID`, `SHEET_ENDPOINT`, `BASE_PATH` ที่
-**Settings → Secrets and variables → Actions → Variables**
-
-> ค่าเหล่านี้ใช้ `vars` ไม่ใช่ `secrets` เพราะยังไงก็ถูกฝังลงไฟล์ static
-> และเปิดเผยได้อยู่แล้ว — ดูหัวข้อความปลอดภัยด้านล่าง
 
 ---
 
@@ -215,6 +212,9 @@ jobs:
 | ล็อกอินผ่านแต่ชีตไม่มีข้อมูล | Apps Script deploy เป็น *Who has access: Anyone* หรือยัง / `CLIENT_ID` ในสคริปต์ตรงกับของจริงไหม / แก้โค้ดแล้ว deploy version ใหม่หรือยัง |
 | Console ขึ้น CORS error | ปกติของ Apps Script — โค้ดจะ fallback เป็น `no-cors` ให้เอง ข้อมูลยังเข้าชีตอยู่ ลองรีเฟรชชีตดู |
 | เข้าได้แค่บางอีเมล | OAuth consent screen ยังเป็น *Testing* — เพิ่ม Test users หรือกด Publish app |
+| เว็บขึ้นหน้าขาว / `_next/...` 404 | base path ไม่ตรงกับชื่อ repo — workflow คำนวณให้อัตโนมัติแล้ว ถ้าเคยตั้ง variable `BASE_PATH` ไว้ผิด ให้ลบทิ้ง |
+| Actions ผ่านแต่เว็บ 404 ทั้งหน้า | Settings → Pages → Source ยังเป็น *Deploy from a branch* ต้องเปลี่ยนเป็น *GitHub Actions* |
+| Actions ล้มที่ขั้น `configure-pages` | repo เป็น private บนแพ็กเกจฟรี — Pages ใช้ได้เฉพาะ repo public |
 | คะแนนหาย | ล้างข้อมูลเบราว์เซอร์ / เปิดโหมดไม่ระบุตัวตน / เปลี่ยนเครื่อง — คะแนนอยู่ใน localStorage เท่านั้น |
 
 ---
