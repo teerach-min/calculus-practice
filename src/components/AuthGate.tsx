@@ -182,21 +182,13 @@ export default function AuthGate() {
   const isGuest = !AUTH_CONFIGURED || !profile;
 
   return (
-    <>
-      {isGuest && (
-        <div className="guest-banner">
-          โหมดทดลอง — ยังไม่ได้ตั้งค่า <code>NEXT_PUBLIC_GOOGLE_CLIENT_ID</code>{' '}
-          จึงข้ามการเข้าสู่ระบบไว้ก่อน (ดูขั้นตอนใน SETUP.md)
-        </div>
-      )}
-      <PracticeApp
-        auth={{
-          profile,
-          userKey: profile?.sub ?? 'guest',
-          isGuest,
-          signOut,
-        }}
-      />
-    </>
+    <PracticeApp
+      auth={{
+        profile,
+        userKey: profile?.sub ?? 'guest',
+        isGuest,
+        signOut,
+      }}
+    />
   );
 }

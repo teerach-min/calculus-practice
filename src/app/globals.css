@@ -569,21 +569,6 @@ input {
   color: var(--green);
 }
 
-.guest-banner {
-  background: var(--amber-bg);
-  border-bottom: 1px solid var(--amber);
-  color: var(--amber-ink);
-  font-size: 13px;
-  padding: 9px 20px;
-  text-align: center;
-  line-height: 1.6;
-}
-
-.guest-banner code {
-  font-family: var(--mono);
-  font-size: 12px;
-}
-
 /* ---------- ผู้ใช้ที่ล็อกอินอยู่ ---------- */
 
 .masthead-right {
