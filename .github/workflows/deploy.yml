@@ -26,8 +26,13 @@ jobs:
           node-version: 20
           cache: npm
 
+      # ขั้นนี้เปิด Pages ให้อัตโนมัติถ้ายังไม่เคยเปิด แต่ถ้า token ไม่มีสิทธิ์
+      # (เช่นตอน repo ยังเป็น private) จะข้ามไป ไม่ให้ล้มทั้ง job
+      # ถ้าข้ามแล้ว job deploy ล้ม ให้ไปเปิดเองที่ Settings -> Pages
+      # -> Build and deployment -> Source: GitHub Actions
       - name: เปิดใช้ GitHub Pages (ครั้งแรกจะสร้างให้เอง)
         uses: actions/configure-pages@v5
+        continue-on-error: true
         with:
           enablement: true
 
